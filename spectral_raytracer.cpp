@@ -584,7 +584,7 @@ public:
             depthInitialized = true;
         }
         
-        // Prevent infinite recursion while maintaining sophisticated BVH
+        // Stop runaway recursion in the BVH build
         if (recursionDepth > 25 || end - start <= 1) {
             if (end > start) {
                 primitive = prims[start];
@@ -1788,7 +1788,7 @@ Scene createCornellBox() {
         Material metal(Material::CONDUCTOR);
         metal.roughness = 0.1;
         
-        // Triangle validation with comprehensive error checking
+        // Triangle validation with error checking
         auto addValidatedTriangle = [&scene](const Vec3& a, const Vec3& b, const Vec3& c, const Material& mat) -> bool {
             // Phase 1: Numerical stability validation
             const auto isValidVertex = [](const Vec3& v) -> bool {
@@ -1883,7 +1883,7 @@ Scene createCornellBox() {
              lightCenter + Vec3(lightSize*0.5, 0, lightSize*0.5), &light, "Light triangle 2"}
         };
         
-        // High-performance batch triangle creation with comprehensive error tracking
+        // Batch triangle creation with error tracking
         size_t successfulTriangles = 0;
         size_t failedTriangles = 0;
         

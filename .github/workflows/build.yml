@@ -1,0 +1,13 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+# This only proves the file compiles. The renderer has no tests and has a known crash.
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: g++ -std=c++14 -O2 -Wall -fopenmp -pthread spectral_raytracer.cpp -o raytracer
