@@ -1,6 +1,16 @@
 # Monte Carlo Spectral Ray Tracer
 
-A physically-based ray tracer that simulates light transport using Monte Carlo methods and spectral wavelength calculations. This implementation produces photorealistic images by accurately modeling how light interacts with different materials and surfaces.
+[![build](https://github.com/sailwalpranjal/spectral-monte-carlo-raytracer/actions/workflows/build.yml/badge.svg)](https://github.com/sailwalpranjal/spectral-monte-carlo-raytracer/actions/workflows/build.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
+A single-file C++14 spectral path tracer. It traces wavelengths between 380 and 780 nm instead of RGB triples, so effects like dispersion through glass fall out of the model. It is a learning project: I wrote it to understand Monte Carlo light transport, not to compete with production renderers.
+
+## Status, read this first
+
+- **Crashes.** The program segfaults (exit code 139) in every optimised build I tried on Windows with MinGW g++ 15.2, `-O1` through `-O3`, with and without OpenMP, and intermittently even at `-O0`. The crash sometimes comes after the render has finished and sometimes before it starts, so a given run may or may not leave an image. I have not found the cause. Small settings such as `--width 8 --height 8 --samples 1` are among the worst. See "Known issues".
+- **Not validated.** I have not compared any output to an analytical solution or to a reference renderer. The README used to describe the output as accurate and photorealistic; I cannot back that up, so treat the images as plausible, not correct.
+- **Throughput is modest.** The numbers are in "Measured throughput" below.
+
 
 ## What This Software Does
 
@@ -191,25 +201,24 @@ The ray tracer implements several advanced rendering techniques:
 - Use smaller image dimensions for testing
 
 **Dark or Bright Images:**
-- The Cornell Box scene has carefully calibrated lighting
+- Lighting in the Cornell Box scene was tuned by eye, not calibrated against measurements
 - Other scenes may need adjustment of light intensity in the source code
 - PPM format may appear different in various image viewers
 
 **Memory Usage:**
 - High-resolution images with many samples require significant RAM
 - Reduce image size or samples if you encounter memory issues
-- The software includes built-in memory management optimizations
 
 ## Technical Notes
 
-The implementation prioritizes physical accuracy over rendering speed. It includes sophisticated models for:
+The implementation aims at physical plausibility over rendering speed. It contains models for:
 - Spectral light transport simulation
 - Realistic material optical properties  
 - Advanced camera lens effects
 - Volumetric light scattering
 - Statistically-driven adaptive sampling
 
-The software is designed for educational and research purposes, demonstrating state-of-the-art rendering techniques used in visual effects and architectural visualization.
+It is educational code. The techniques it implements (BVH, spectral sampling, multiple importance sampling, bilateral denoising) are standard textbook ones; I make no claim that the implementations are correct or complete.
 
 ## File Output Details
 
@@ -220,3 +229,36 @@ The generated PPM files contain:
 - Linear color space converted from spectral calculations
 
 Each pixel value represents the calculated light energy reaching that point on the virtual camera sensor, tone-mapped to the displayable range.
+
+## Measured throughput
+
+Measured with `bash scripts/benchmark.sh` on one machine: 8 hardware threads, MSYS2 g++ 15.2.0, `-O3 -fopenmp`, scene `cornell`. "Samples" is how the program counts: width x height x samples per pixel. It is not a count of ray bounces. Every one of these runs exited with code 139 (see below); a row shows a time only if the program got far enough to print it.
+
+| Image | Runs that printed a time (of 3) | Throughput printed |
+|---|---|---|
+| 64x64 at 4 spp | 1 | 0.24 MSamples/s |
+| 128x128 at 16 spp | 2 | 0.34 to 0.39 MSamples/s |
+| 256x256 at 16 spp | 2 | 0.35 to 0.36 MSamples/s |
+
+So roughly 0.2 to 0.4 million samples per second on this machine. Other hardware will differ, and these runs are too few and too variable to give a confidence interval. An earlier claim of about 1.8 million samples per second is not reproduced by anything in this repository and has been dropped.
+
+## Known issues
+
+1. **Segmentation fault.** Exit code 139 on every benchmark run above. Reproduce with:
+   ```
+   g++ -std=c++14 -O3 -fopenmp spectral_raytracer.cpp -o raytracer
+   ./raytracer --scene cornell --width 64 --height 64 --samples 4 --output out.ppm; echo $?
+   ```
+   Things I ruled out: `-fopenmp` (it also crashes single-threaded and without OpenMP), strict aliasing, vectorisation, and a small stack (a 64 MB stack did not help). `-Wall -Wextra` reports no warnings that explain it. A debugger and a sanitiser were not available on my machine, so the next step is to build under Linux with `-fsanitize=address,undefined`.
+2. **Very small images** (for example 8x8 at 1 spp) crash more often than larger ones.
+3. **No tests.** There is no test suite. The CI workflow only checks that the file compiles.
+
+## Roadmap
+
+1. Find and fix the crash (Linux build with AddressSanitizer and UndefinedBehaviorSanitizer).
+2. Add a furnace test: a diffuse sphere with albedo 1 inside a uniform environment should render as a uniform image. Passing it would be the first real validation.
+3. Re-measure throughput once the program exits cleanly.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).
